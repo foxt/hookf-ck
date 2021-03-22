@@ -1,0 +1,82 @@
+<html>
+    <head>
+        <title>HookF*ck</title>
+        <link rel="preconnect" href="https://fonts.gstatic.com">
+        <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap" rel="stylesheet">
+        <style>
+            body {
+                background-color: #222;
+                color: #fff;
+                font-family: "Roboto Mono", monospace;
+                text-align: center;
+                max-width: 800px;
+                margin-left:auto;
+                margin-right:auto;
+            }
+            table {
+                width:100vw;
+                max-width:800px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>HookF*ck</h1>
+        <h3>Searches for Discord webhooks in files and deletes them.</h3>
+
+        <h4>Upload a token logger (or any file)</h4>
+        <input type="file" multiple>
+        <table id="matches">
+            
+        </div>
+        <script>
+            function getHtml(m,j) {
+                if (j.message == "Unknown Webhook") {
+                    return `<td width="1">x</td>
+                        <td><a href=${m} style="color:#fff;">${j.message}</a></td>
+                        <td width="1" ></td>`
+                } else if (j.message) {
+                    return `<td width="1">?</td>
+                        <td><a href=${m} style="color:#fff;">${j.message}</a></td>
+                        <td width="1" ><button onclick="retry(this)">Retry</button></td>`
+                } else {
+                    return `<td width="1"><img src="${j.avatar ? `https://cdn.discordapp.com/avatars/${j.id}/${j.avatar}.webp?size=128` : "https://discordapp.com/assets/6debd47ed13483642cf09e832ed0bc1b.png"}" height='36' width='36'></img></td>
+                        <td><a href=${m} style="color:#fff;">${j.name}</a></td>
+                        <td width="1" ><button onclick="del(this)">Delete</button></td>`
+                }
+            }
+            async function retry(el) {
+                var m = el.parentElement.parentElement.querySelector("a").href
+                var f = await fetch(m)
+                var j = await f.json()
+                el.parentElement.parentElement.innerHTML = getHtml(m,j)
+            }
+            async function del(el) {
+                var m = el.parentElement.parentElement.querySelector("a").href
+                var f = await fetch(m, {method:"DELETE"})
+                return retry(el)
+            }
+
+            var hookRegex = /(https:\/\/)?(www\.)?(canary\.|ptb\.|development\.)?discord(app)?.com\/api\/webhooks\/[0-9]{1,32}\/[a-zA-Z0-9_-]{68}/g
+            const inputElement = document.querySelector("input");
+            inputElement.addEventListener("change", handleFiles, false);
+            async function handleFiles() {
+                const fileList = [...this.files]; /* now you can work with the file list */
+                for (var file of fileList) {
+                    try {
+                        var ab = String.fromCharCode(...new Uint8Array(await file.arrayBuffer()).filter((a) => a > 31 && a < 127))
+                        var matches = ab.match(hookRegex)
+                        for (var m of matches) {
+                            try {
+                                var f = await fetch(m)
+                                var j = await f.json()
+                                console.log(j)
+                                document.querySelector("#matches").innerHTML += "<tr>" + getHtml(m,j) + "</tr>"
+                                
+                            } catch(e) {console.error(e)}
+                        }
+                    }catch(e) {console.error(e)}
+                }
+            }
+        </script>
+    </body>
+</html>
