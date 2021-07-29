@@ -23,6 +23,7 @@
     <body>
         <h1>HookF*ck</h1>
         <h3>Searches for Discord webhooks in files and deletes them.</h3>
+        Note that obfuscating against this is incredibly easy, and HookF*ck can only detect malware made by the skiddiest of programmers.
 
         <h4>Upload a token logger (or any file)</h4>
         <input type="file" multiple>
@@ -61,11 +62,16 @@
             const inputElement = document.querySelector("input");
             inputElement.addEventListener("change", handleFiles, false);
             async function handleFiles() {
+                document.querySelector("#matches").innerHTML = "Loading..."
                 const fileList = [...this.files]; /* now you can work with the file list */
                 for (var file of fileList) {
                     try {
-                        var ab = String.fromCharCode(...new Uint8Array(await file.arrayBuffer()).filter((a) => a > 31 && a < 127))
+                        var ab =new Uint8Array(await file.arrayBuffer()).filter((a) => a > 31 && a < 127).reduce((acc, val) => acc + String.fromCharCode(val), "")
                         var matches = ab.match(hookRegex)
+                        if (!matches) {
+                            document.querySelector("#matches").innerHTML += `<tr>No (unobfuscated) hooks found in ${file.name}</tr>`
+                            continue;
+                        }
                         for (var m of matches) {
                             try {
                                 var f = await fetch(m)
@@ -73,10 +79,11 @@
                                 console.log(j)
                                 document.querySelector("#matches").innerHTML += "<tr>" + getHtml(m,j) + "</tr>"
                                 
-                            } catch(e) {console.error(e)}
+                            } catch(e) {console.error(e); document.querySelector("#matches").innerHTML = e.toString()}
                         }
-                    }catch(e) {console.error(e)}
+                    }catch(e) {console.error(e); document.querySelector("#matches").innerHTML = e.toString()}
                 }
+                document.querySelector("#matches").innerHTML = document.querySelector("#matches").innerHTML.replace("Loading...","")
             }
         </script>
     </body>
