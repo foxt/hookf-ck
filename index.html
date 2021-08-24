@@ -1,90 +1,137 @@
 <html>
-    <!---->
-    <head>
-        <title>HookF*ck</title>
-        <link rel="preconnect" href="https://fonts.gstatic.com">
-        <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap" rel="stylesheet">
-        <style>
-            body {
-                background-color: #222;
-                color: #fff;
-                font-family: "Roboto Mono", monospace;
-                text-align: center;
-                max-width: 800px;
-                margin-left:auto;
-                margin-right:auto;
-            }
-            table {
-                width:100vw;
-                max-width:800px;
-            }
-        </style>
-    </head>
-    <body>
-        <h1>HookF*ck</h1>
-        <h3>Searches for Discord webhooks in files and deletes them.</h3>
-        Note that obfuscating against this is incredibly easy, and HookF*ck can only detect malware made by the skiddiest of programmers.
+<!---->
 
-        <h4>Upload a token logger (or any file)</h4>
-        <input type="file" multiple>
-        <table id="matches">
-            
-        </div>
-        <script>
-            function getHtml(m,j) {
-                if (j.message == "Unknown Webhook") {
-                    return `<td width="1">x</td>
+<head>
+    <title>HookF*ck</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #222;
+            color: #fff;
+            font-family: "Roboto Mono", monospace;
+            text-align: center;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        table {
+            width: 100vw;
+            max-width: 800px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>HookF*ck</h1>
+    <h3>Searches for Discord webhooks in files and deletes them.</h3>
+    Note that obfuscating against this is incredibly easy, and HookF*ck can only detect malware made by the skiddiest of
+    programmers.
+
+    <h4>Upload a token logger (or any file)</h4>
+    <input type="file" multiple>
+    <div id="matches"></div>
+    <script>
+
+        /**
+         * @param {string} text
+         * @return {string}
+         */
+        function sanitizeHTML(text) {
+            var element = document.createElement('div');
+            element.innerText = text;
+            return element.innerHTML;
+        }
+        function getHtml(m, j) {
+            if (j.message == "Unknown Webhook") {
+                return `<td width="1">x</td>
                         <td><a href=${m} style="color:#fff;">${j.message}</a></td>
                         <td width="1" ></td>`
-                } else if (j.message) {
-                    return `<td width="1">?</td>
+            } else if (j.message) {
+                return `<td width="1">?</td>
                         <td><a href=${m} style="color:#fff;">${j.message}</a></td>
                         <td width="1" ><button onclick="retry(this)">Retry</button></td>`
-                } else {
-                    return `<td width="1"><img src="${j.avatar ? `https://cdn.discordapp.com/avatars/${j.id}/${j.avatar}.webp?size=128` : "https://discordapp.com/assets/6debd47ed13483642cf09e832ed0bc1b.png"}" height='36' width='36'></img></td>
-                        <td><a href=${m} style="color:#fff;">${j.name}</a></td>
+            } else {
+                return `<td width="1"><img src="${j.avatar ? `https://cdn.discordapp.com/avatars/${j.id}/${j.avatar}.webp?size=128` : "https://discordapp.com/assets/6debd47ed13483642cf09e832ed0bc1b.png"}" height='36' width='36'></img></td>
+                        <td><a href=${m} style="color:#fff;">${sanitizeHTML(j.name)}</a></td>
                         <td width="1" ><button onclick="del(this)">Delete</button></td>`
-                }
             }
-            async function retry(el) {
-                var m = el.parentElement.parentElement.querySelector("a").href
-                var f = await fetch(m)
-                var j = await f.json()
-                el.parentElement.parentElement.innerHTML = getHtml(m,j)
-            }
-            async function del(el) {
-                var m = el.parentElement.parentElement.querySelector("a").href
-                var f = await fetch(m, {method:"DELETE"})
-                return retry(el)
-            }
+        }
+        async function retry(el) {
+            var m = el.parentElement.parentElement.querySelector("a").href
+            var f = await fetch(m)
+            var j = await f.json()
+            el.parentElement.parentElement.innerHTML = getHtml(m, j)
+        }
+        async function del(el) {
+            var m = el.parentElement.parentElement.querySelector("a").href
+            var f = await fetch(m, {
+                method: "DELETE"
+            })
+            return retry(el)
+        }
 
-            var hookRegex = /(https:\/\/)?(www\.)?(canary\.|ptb\.|development\.)?discord(app)?.com\/api\/webhooks\/[0-9]{1,32}\/[a-zA-Z0-9_-]{68}/g
-            const inputElement = document.querySelector("input");
-            inputElement.addEventListener("change", handleFiles, false);
-            async function handleFiles() {
-                document.querySelector("#matches").innerHTML = "Loading..."
-                const fileList = [...this.files]; /* now you can work with the file list */
-                for (var file of fileList) {
-                    try {
-                        var ab =new Uint8Array(await file.arrayBuffer()).filter((a) => a > 31 && a < 127).reduce((acc, val) => acc + String.fromCharCode(val), "")
-                        var matches = ab.match(hookRegex)
-                        if (!matches) {
-                            document.querySelector("#matches").innerHTML += `<tr>No (unobfuscated) hooks found in ${file.name}</tr>`
-                            continue;
-                        }
-                        for (var m of matches) {
-                            try {
-                                var f = await fetch(m)
-                                var j = await f.json()
-                                console.log(j)
-                                document.querySelector("#matches").innerHTML += "<tr>" + getHtml(m,j) + "</tr>"
-                                
-                            } catch(e) {console.error(e); document.querySelector("#matches").innerHTML = e.toString()}
-                        }
-                    }catch(e) {console.error(e); document.querySelector("#matches").innerHTML = e.toString()}
+        var hookRegex =
+            /(https:\/\/)?(www\.)?(canary\.|ptb\.|development\.)?discord(app)?.com\/api\/webhooks\/[0-9]{1,32}\/[a-zA-Z0-9_-]{68}/g
+        // quick and dirty regex, designed to find useful urls, not be spec compliant
+        var urlRegex = /(https?:\/\/)?([\w\d]+\.)+(AAA|AARP|ABARTH|ABB|ABBOTT|ABBVIE|ABC|ABLE|ABOGADO|ABUDHABI|AC|ACADEMY|ACCENTURE|ACCOUNTANT|ACCOUNTANTS|ACO|ACTOR|AD|ADAC|ADS|ADULT|AE|AEG|AERO|AETNA|AF|AFAMILYCOMPANY|AFL|AFRICA|AG|AGAKHAN|AGENCY|AI|AIG|AIRBUS|AIRFORCE|AIRTEL|AKDN|AL|ALFAROMEO|ALIBABA|ALIPAY|ALLFINANZ|ALLSTATE|ALLY|ALSACE|ALSTOM|AM|AMAZON|AMERICANEXPRESS|AMERICANFAMILY|AMEX|AMFAM|AMICA|AMSTERDAM|ANALYTICS|ANDROID|ANQUAN|ANZ|AO|AOL|APARTMENTS|APP|APPLE|AQ|AQUARELLE|AR|ARAB|ARAMCO|ARCHI|ARMY|ARPA|ART|ARTE|AS|ASDA|ASIA|ASSOCIATES|AT|ATHLETA|ATTORNEY|AU|AUCTION|AUDI|AUDIBLE|AUDIO|AUSPOST|AUTHOR|AUTO|AUTOS|AVIANCA|AW|AWS|AX|AXA|AZ|AZURE|BA|BABY|BAIDU|BANAMEX|BANANAREPUBLIC|BAND|BANK|BAR|BARCELONA|BARCLAYCARD|BARCLAYS|BAREFOOT|BARGAINS|BASEBALL|BASKETBALL|BAUHAUS|BAYERN|BB|BBC|BBT|BBVA|BCG|BCN|BD|BE|BEATS|BEAUTY|BEER|BENTLEY|BERLIN|BEST|BESTBUY|BET|BF|BG|BH|BHARTI|BI|BIBLE|BID|BIKE|BING|BINGO|BIO|BIZ|BJ|BLACK|BLACKFRIDAY|BLOCKBUSTER|BLOG|BLOOMBERG|BLUE|BM|BMS|BMW|BN|BNPPARIBAS|BO|BOATS|BOEHRINGER|BOFA|BOM|BOND|BOO|BOOK|BOOKING|BOSCH|BOSTIK|BOSTON|BOT|BOUTIQUE|BOX|BR|BRADESCO|BRIDGESTONE|BROADWAY|BROKER|BROTHER|BRUSSELS|BS|BT|BUDAPEST|BUGATTI|BUILD|BUILDERS|BUSINESS|BUY|BUZZ|BV|BW|BY|BZ|BZH|CA|CAB|CAFE|CAL|CALL|CALVINKLEIN|CAM|CAMERA|CAMP|CANCERRESEARCH|CANON|CAPETOWN|CAPITAL|CAPITALONE|CAR|CARAVAN|CARDS|CARE|CAREER|CAREERS|CARS|CASA|CASE|CASH|CASINO|CAT|CATERING|CATHOLIC|CBA|CBN|CBRE|CBS|CC|CD|CENTER|CEO|CERN|CF|CFA|CFD|CG|CH|CHANEL|CHANNEL|CHARITY|CHASE|CHAT|CHEAP|CHINTAI|CHRISTMAS|CHROME|CHURCH|CI|CIPRIANI|CIRCLE|CISCO|CITADEL|CITI|CITIC|CITY|CITYEATS|CK|CL|CLAIMS|CLEANING|CLICK|CLINIC|CLINIQUE|CLOTHING|CLOUD|CLUB|CLUBMED|CM|CN|CO|COACH|CODES|COFFEE|COLLEGE|COLOGNE|COM|COMCAST|COMMBANK|COMMUNITY|COMPANY|COMPARE|COMPUTER|COMSEC|CONDOS|CONSTRUCTION|CONSULTING|CONTACT|CONTRACTORS|COOKING|COOKINGCHANNEL|COOL|COOP|CORSICA|COUNTRY|COUPON|COUPONS|COURSES|CPA|CR|CREDIT|CREDITCARD|CREDITUNION|CRICKET|CROWN|CRS|CRUISE|CRUISES|CSC|CU|CUISINELLA|CV|CW|CX|CY|CYMRU|CYOU|CZ|DABUR|DAD|DANCE|DATA|DATE|DATING|DATSUN|DAY|DCLK|DDS|DE|DEAL|DEALER|DEALS|DEGREE|DELIVERY|DELL|DELOITTE|DELTA|DEMOCRAT|DENTAL|DENTIST|DESI|DESIGN|DEV|DHL|DIAMONDS|DIET|DIGITAL|DIRECT|DIRECTORY|DISCOUNT|DISCOVER|DISH|DIY|DJ|DK|DM|DNP|DO|DOCS|DOCTOR|DOG|DOMAINS|DOT|DOWNLOAD|DRIVE|DTV|DUBAI|DUCK|DUNLOP|DUPONT|DURBAN|DVAG|DVR|DZ|EARTH|EAT|EC|ECO|EDEKA|EDU|EDUCATION|EE|EG|EMAIL|EMERCK|ENERGY|ENGINEER|ENGINEERING|ENTERPRISES|EPSON|EQUIPMENT|ER|ERICSSON|ERNI|ES|ESQ|ESTATE|ET|ETISALAT|EU|EUR)()[/\w\d]*(\?[\w\d&]+)*/gi
+        const inputElement = document.querySelector("input");
+        inputElement.addEventListener("change", handleFiles, false);
+
+        async function findHooks(ab) {
+            var h = ""
+            var matches = ab.match(hookRegex)
+            if (!matches) return `<tr>No (unobfuscated) hooks found.</tr>`   
+            for (var m of matches) {
+                try {
+                    var f = await fetch(m)
+                    var j = await f.json()
+                    console.log(j)
+                    "<tr>" + getHtml(m, j) + "</tr>"
+                } catch (e) {
+                    console.error(e);
+                    h = e.toString()
                 }
-                document.querySelector("#matches").innerHTML = document.querySelector("#matches").innerHTML.replace("Loading...","")
             }
-        </script>
-    </body>
+            return h;
+        }
+        async function findUrls(ab) {
+            var h = ""
+            var matches = ab.match(urlRegex)
+            if (!matches) return `<tr>No URLs found</tr>`   
+            for (var m of matches) {
+                h += `<tr><td>${sanitizeHTML(m)}</td></tr>`
+            }
+            return h;
+        }
+
+        async function inspectFile(file) {
+            var h = ''
+            try {
+                var ab = new Uint8Array(await file.arrayBuffer())
+                        .filter((a) => a > 31 && a < 127)
+                        .reduce((acc, val) => acc + String.fromCharCode(val), "");
+                h += "<h4>Discord Hooks</h4><table>" +await findHooks(ab) + "</table>"
+                h += "<h4>All URLS</h4><table>" +await findUrls(ab) + "</table>"
+                h += `<button onclick="searchStrings()">Search for strings in file</button>`
+            } catch (e) {
+                console.error(e);
+                h = e.toString()
+            }
+            return h;
+        }
+
+        async function handleFiles() {
+            document.querySelector("#matches").innerHTML = "Loading..."
+            const fileList = [...this.files]; /* now you can work with the file list */
+            for (var file of fileList) {
+                document.querySelector("#matches").innerHTML += `<h4>Results for file ${file.name}</h4>` + await inspectFile(file)
+            }
+            document.querySelector("#matches").innerHTML = document.querySelector("#matches").innerHTML.replace(
+                "Loading...", "")
+        }
+    </script>
+</body>
+
 </html>
